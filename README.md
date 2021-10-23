@@ -2,4 +2,4 @@
  
  adding stuff check 
  
- jetson
+ jetson nano says hello
