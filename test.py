@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import cv2
 import depthai as dai
 
@@ -22,7 +24,7 @@ xoutVideo.input.setQueueSize(1)
 camRgb.video.link(xoutVideo.input)
 
 # Connect to device and start pipeline
-with dai.Device(pipeline) as device:
+with dai.Device(pipeline, usb2Mode=False) as device:
 
     video = device.getOutputQueue(name="video", maxSize=1, blocking=False)
 
