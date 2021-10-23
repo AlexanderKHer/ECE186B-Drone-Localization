@@ -1,3 +1,6 @@
 [submodule "depthai"]
 	path = depthai
 	url = https://github.com/luxonis/depthai
+[submodule "jetson-inference"]
+	path = jetson-inference
+	url = https://github.com/dusty-nv/jetson-inference
