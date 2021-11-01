@@ -1,0 +1,27 @@
+<annotation>
+    <filename>20211025-090535.jpg</filename>
+    <folder>drone</folder>
+    <source>
+        <database>drone</database>
+        <annotation>custom</annotation>
+        <image>custom</image>
+    </source>
+    <size>
+        <width>1280</width>
+        <height>720</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>all_might</name>
+        <pose>unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>611</xmin>
+            <ymin>133</ymin>
+            <xmax>739</xmax>
+            <ymax>228</ymax>
+        </bndbox>
+    </object>
+</annotation>
