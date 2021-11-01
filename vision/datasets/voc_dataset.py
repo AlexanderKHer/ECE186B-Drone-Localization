@@ -37,6 +37,7 @@ class VOCDataset:
 			image_sets_file = "./bdd_files/trainval.txt"
 
 
+
 		self.ids = VOCDataset._read_image_ids(image_sets_file)
 		self.keep_difficult = keep_difficult
 
