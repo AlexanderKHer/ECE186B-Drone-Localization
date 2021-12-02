@@ -1,31 +1,51 @@
+#!/usr/bin/env python3
+
 import cv2
-import os
+import depthai as dai
 
-cam = cv2.VideoCapture(0)
+# Create pipeline
+pipeline = dai.Pipeline()
 
-cv2.namedWindow("test")
+# Define source and output
+camRgb = pipeline.create(dai.node.ColorCamera)
+xoutVideo = pipeline.create(dai.node.XLinkOut)
 
-img_counter = 0
-directory = "C:/Users/Alex/Documents/drone localization/ECE186B-Drone-Localization/data/training"
-while True:
-    ret, frame = cam.read()
-    if not ret:
-        print("failed to grab frame")
-        break
-    cv2.imshow("test", frame)
+xoutVideo.setStreamName("video")
 
-    k = cv2.waitKey(1)
-    if k%256 == 27:
-        # ESC pressed
-        print("Escape hit, closing...")
-        break
-    elif k%256 == 32:
-        # SPACE pressed
-        img_name = "Drone_frame_{}.png".format(img_counter)
-        cv2.imwrite(os.path.join(directory, img_name), frame)
-        print("{} written!".format(img_name))
-        img_counter += 1
+# Properties
+camRgb.setBoardSocket(dai.CameraBoardSocket.RGB)
+camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+camRgb.setVideoSize(1920, 1080)
 
-cam.release()
+xoutVideo.input.setBlocking(False)
+xoutVideo.input.setQueueSize(1)
 
-cv2.destroyAllWindows()
+# Linking
+camRgb.video.link(xoutVideo.input)
+
+# Counter for img collection
+img_count = 0
+
+# Connect to device and start pipeline
+with dai.Device(pipeline) as device:
+
+    video = device.getOutputQueue(name="video", maxSize=1, blocking=False)
+
+    while True:
+        videoIn = video.get()
+
+        # Get BGR frame from NV12 encoded video frame to show with opencv
+        # Visualizing the frame on slower hosts might have overhead
+        cv2.imshow("video", videoIn.getCvFrame())
+
+        k = cv2.waitKey(1)
+        if k%256 == 27:
+            # This means that ESC was pressed
+            print("Escaped was pressed, closing now....")
+            break
+        elif k%256 == 32:
+            # This means that SPACE was pressed
+            img_name = "opencv_frame_{}.png".format(img_count)
+            cv2.imwrite('data_depth/' + img_name, videoIn.getCvFrame())
+            print("{} written!".format(img_name))
+            img_count += 1

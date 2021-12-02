@@ -1,264 +1,161 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
+import sys
 import cv2
-import numpy as np
 import depthai as dai
-import argparse
+import numpy as np
+import time
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-res",
-    "--resolution",
-    type=str,
-    default="720",
-    help="Sets the resolution on mono cameras. Options: 800 | 720 | 400",
-)
-parser.add_argument(
-    "-md",
-    "--mesh_dir",
-    type=str,
-    default=None,
-    help="Output directory for mesh files. If not specified mesh files won't be saved",
-)
-parser.add_argument(
-    "-lm",
-    "--load_mesh",
-    default=False,
-    action="store_true",
-    help="Read camera intrinsics, generate mesh files and load them into the stereo node.",
-)
-parser.add_argument(
-    "-rect",
-    "--out_rectified",
-    default=False,
-    action="store_true",
-    help="Generate and display rectified streams",
-)
-parser.add_argument(
-    "-lr",
-    "--lrcheck",
-    default=False,
-    action="store_true",
-    help="Better handling for occlusions",
-)
-parser.add_argument(
-    "-e",
-    "--extended",
-    default=False,
-    action="store_true",
-    help="Closer-in minimum depth, disparity range is doubled",
-)
-parser.add_argument(
-    "-s",
-    "--subpixel",
-    default=False,
-    action="store_true",
-    help="Better accuracy for longer distance, fractional disparity 32-levels",
-)
-parser.add_argument(
-    "-m",
-    "--median",
-    type=str,
-    default="7x7",
-    help="Choose the size of median filtering. Options: OFF | 3x3 | 5x5 | 7x7 (default)",
-)
-parser.add_argument(
-    "-d",
-    "--depth",
-    default=False,
-    action="store_true",
-    help="Display depth frames",
-)
-args = parser.parse_args()
+'''
+Spatial detection network demo.
+    Performs inference on RGB camera and retrieves spatial location coordinates: x,y,z relative to the center of depth map.
+'''
 
-resolutionMap = {"800": (1280, 800), "720": (1280, 720), "400": (640, 400)}
-if args.resolution not in resolutionMap:
-    exit("Unsupported resolution!")
+# Get argument first
+nnBlobPath = str((Path(__file__).parent / Path('C:\/Users\\aher5\\Desktop\\test\\frozen_inference_graph_openvino_2021.4_5shave.blob')).resolve().absolute())
+if len(sys.argv) > 1:
+    nnBlobPath = sys.argv[1]
 
-resolution = resolutionMap[args.resolution]
-meshDirectory = args.mesh_dir  # Output dir for mesh files
-generateMesh = args.load_mesh  # Load mesh files
+if not Path(nnBlobPath).exists():
+    import sys
+    raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py"')
 
-outRectified = args.out_rectified  # Output and display rectified streams
-lrcheck = args.lrcheck  # Better handling for occlusions
-extended = args.extended  # Closer-in minimum depth, disparity range is doubled
-subpixel = args.subpixel  # Better accuracy for longer distance, fractional disparity 32-levels
-depth = args.depth  # Display depth frames
+# MobilenetSSD label texts
+labelMap = 'C:\\Users\\aher5\\Desktop\\test\\label_map.pbtxt'
 
-medianMap = {
-    "OFF": dai.StereoDepthProperties.MedianFilter.MEDIAN_OFF,
-    "3x3": dai.StereoDepthProperties.MedianFilter.KERNEL_3x3,
-    "5x5": dai.StereoDepthProperties.MedianFilter.KERNEL_5x5,
-    "7x7": dai.StereoDepthProperties.MedianFilter.KERNEL_7x7,
-}
-if args.median not in medianMap:
-    exit("Unsupported median size!")
+syncNN = True
 
-median = medianMap[args.median]
-
-print("StereoDepth config options:")
-print("    Resolution:  ", resolution)
-print("    Left-Right check:  ", lrcheck)
-print("    Extended disparity:", extended)
-print("    Subpixel:          ", subpixel)
-print("    Median filtering:  ", median)
-print("    Generating mesh files:  ", generateMesh)
-print("    Outputting mesh files to:  ", meshDirectory)
-
-
-def getMesh(calibData):
-    M1 = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.LEFT, resolution[0], resolution[1]))
-    d1 = np.array(calibData.getDistortionCoefficients(dai.CameraBoardSocket.LEFT))
-    R1 = np.array(calibData.getStereoLeftRectificationRotation())
-    M2 = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.RIGHT, resolution[0], resolution[1]))
-    d2 = np.array(calibData.getDistortionCoefficients(dai.CameraBoardSocket.RIGHT))
-    R2 = np.array(calibData.getStereoRightRectificationRotation())
-    mapXL, mapYL = cv2.initUndistortRectifyMap(M1, d1, R1, M2, resolution, cv2.CV_32FC1)
-    mapXR, mapYR = cv2.initUndistortRectifyMap(M2, d2, R2, M2, resolution, cv2.CV_32FC1)
-
-    meshCellSize = 16
-    meshLeft = []
-    meshRight = []
-
-    for y in range(mapXL.shape[0] + 1):
-        if y % meshCellSize == 0:
-            rowLeft = []
-            rowRight = []
-            for x in range(mapXL.shape[1] + 1):
-                if x % meshCellSize == 0:
-                    if y == mapXL.shape[0] and x == mapXL.shape[1]:
-                        rowLeft.append(mapYL[y - 1, x - 1])
-                        rowLeft.append(mapXL[y - 1, x - 1])
-                        rowRight.append(mapYR[y - 1, x - 1])
-                        rowRight.append(mapXR[y - 1, x - 1])
-                    elif y == mapXL.shape[0]:
-                        rowLeft.append(mapYL[y - 1, x])
-                        rowLeft.append(mapXL[y - 1, x])
-                        rowRight.append(mapYR[y - 1, x])
-                        rowRight.append(mapXR[y - 1, x])
-                    elif x == mapXL.shape[1]:
-                        rowLeft.append(mapYL[y, x - 1])
-                        rowLeft.append(mapXL[y, x - 1])
-                        rowRight.append(mapYR[y, x - 1])
-                        rowRight.append(mapXR[y, x - 1])
-                    else:
-                        rowLeft.append(mapYL[y, x])
-                        rowLeft.append(mapXL[y, x])
-                        rowRight.append(mapYR[y, x])
-                        rowRight.append(mapXR[y, x])
-            if (mapXL.shape[1] % meshCellSize) % 2 != 0:
-                rowLeft.append(0)
-                rowLeft.append(0)
-                rowRight.append(0)
-                rowRight.append(0)
-
-            meshLeft.append(rowLeft)
-            meshRight.append(rowRight)
-
-    meshLeft = np.array(meshLeft)
-    meshRight = np.array(meshRight)
-
-    return meshLeft, meshRight
-
-
-def saveMeshFiles(meshLeft, meshRight, outputPath):
-    print("Saving mesh to:", outputPath)
-    meshLeft.tofile(outputPath + "/left_mesh.calib")
-    meshRight.tofile(outputPath + "/right_mesh.calib")
-
-
-def getDisparityFrame(frame):
-    maxDisp = stereo.initialConfig.getMaxDisparity()
-    disp = (frame * (255.0 / maxDisp)).astype(np.uint8)
-    disp = cv2.applyColorMap(disp, cv2.COLORMAP_JET)
-
-    return disp
-
-
-print("Creating Stereo Depth pipeline")
+# Create pipeline
 pipeline = dai.Pipeline()
 
-camLeft = pipeline.create(dai.node.MonoCamera)
-camRight = pipeline.create(dai.node.MonoCamera)
+# Define sources and outputs
+camRgb = pipeline.create(dai.node.ColorCamera)
+spatialDetectionNetwork = pipeline.create(dai.node.MobileNetSpatialDetectionNetwork)
+monoLeft = pipeline.create(dai.node.MonoCamera)
+monoRight = pipeline.create(dai.node.MonoCamera)
 stereo = pipeline.create(dai.node.StereoDepth)
-xoutLeft = pipeline.create(dai.node.XLinkOut)
-xoutRight = pipeline.create(dai.node.XLinkOut)
-xoutDisparity = pipeline.create(dai.node.XLinkOut)
+
+xoutRgb = pipeline.create(dai.node.XLinkOut)
+xoutNN = pipeline.create(dai.node.XLinkOut)
+xoutBoundingBoxDepthMapping = pipeline.create(dai.node.XLinkOut)
 xoutDepth = pipeline.create(dai.node.XLinkOut)
-xoutRectifLeft = pipeline.create(dai.node.XLinkOut)
-xoutRectifRight = pipeline.create(dai.node.XLinkOut)
 
-camLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
-camRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
-res = (
-    dai.MonoCameraProperties.SensorResolution.THE_800_P
-    if resolution[1] == 800
-    else dai.MonoCameraProperties.SensorResolution.THE_720_P
-    if resolution[1] == 720
-    else dai.MonoCameraProperties.SensorResolution.THE_400_P
-)
-for monoCam in (camLeft, camRight):  # Common config
-    monoCam.setResolution(res)
-    # monoCam.setFps(20.0)
-
-stereo.initialConfig.setConfidenceThreshold(200)
-stereo.initialConfig.setMedianFilter(median)  # KERNEL_7x7 default
-stereo.setRectifyEdgeFillColor(0)  # Black, to better see the cutout
-stereo.setLeftRightCheck(lrcheck)
-# FIXME: RuntimeError: StereoDepth(2) - StereoDepth | ExtendedDisparity is not implemented yet.
-stereo.setExtendedDisparity(extended)
-stereo.setSubpixel(subpixel)
-
-xoutLeft.setStreamName("left")
-xoutRight.setStreamName("right")
-xoutDisparity.setStreamName("disparity")
+xoutRgb.setStreamName("rgb")
+xoutNN.setStreamName("detections")
+xoutBoundingBoxDepthMapping.setStreamName("boundingBoxDepthMapping")
 xoutDepth.setStreamName("depth")
-xoutRectifLeft.setStreamName("rectifiedLeft")
-xoutRectifRight.setStreamName("rectifiedRight")
 
-camLeft.out.link(stereo.left)
-camRight.out.link(stereo.right)
-stereo.syncedLeft.link(xoutLeft.input)
-stereo.syncedRight.link(xoutRight.input)
-stereo.disparity.link(xoutDisparity.input)
-if depth:
-    stereo.depth.link(xoutDepth.input)
-if outRectified:
-    stereo.rectifiedLeft.link(xoutRectifLeft.input)
-    stereo.rectifiedRight.link(xoutRectifRight.input)
+# Properties
+camRgb.setPreviewSize(300, 300)
+camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+camRgb.setInterleaved(False)
+camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
 
-streams = ["left", "right"]
-if outRectified:
-    streams.extend(["rectifiedLeft", "rectifiedRight"])
-streams.append("disparity")
-if depth:
-    streams.append("depth")
+monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
+monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
 
-calibData = dai.Device().readCalibration()
-leftMesh, rightMesh = getMesh(calibData)
-if generateMesh:
-    meshLeft = list(leftMesh.tobytes())
-    meshRight = list(rightMesh.tobytes())
-    stereo.loadMeshData(meshLeft, meshRight)
+# Setting node configs
+stereo.initialConfig.setConfidenceThreshold(255)
 
-if meshDirectory is not None:
-    saveMeshFiles(leftMesh, rightMesh, meshDirectory)
+spatialDetectionNetwork.setBlobPath(nnBlobPath)
+spatialDetectionNetwork.setConfidenceThreshold(0.5)
+spatialDetectionNetwork.input.setBlocking(False)
+spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
+spatialDetectionNetwork.setDepthLowerThreshold(100)
+spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
+# Linking
+monoLeft.out.link(stereo.left)
+monoRight.out.link(stereo.right)
 
-print("Creating DepthAI device")
+camRgb.preview.link(spatialDetectionNetwork.input)
+if syncNN:
+    spatialDetectionNetwork.passthrough.link(xoutRgb.input)
+else:
+    camRgb.preview.link(xoutRgb.input)
+
+spatialDetectionNetwork.out.link(xoutNN.input)
+spatialDetectionNetwork.boundingBoxMapping.link(xoutBoundingBoxDepthMapping.input)
+
+stereo.depth.link(spatialDetectionNetwork.inputDepth)
+spatialDetectionNetwork.passthroughDepth.link(xoutDepth.input)
+
+# Connect to device and start pipeline
 with dai.Device(pipeline) as device:
-    # Create a receive queue for each stream
-    qList = [device.getOutputQueue(stream, 8, blocking=False) for stream in streams]
+
+    # Output queues will be used to get the rgb frames and nn data from the outputs defined above
+    previewQueue = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+    detectionNNQueue = device.getOutputQueue(name="detections", maxSize=4, blocking=False)
+    xoutBoundingBoxDepthMapping = device.getOutputQueue(name="boundingBoxDepthMapping", maxSize=4, blocking=False)
+    depthQueue = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
+
+    startTime = time.monotonic()
+    counter = 0
+    fps = 0
 
     while True:
-        for q in qList:
-            name = q.getName()
-            frame = q.get().getCvFrame()
-            if name == "depth":
-                frame = frame.astype(np.uint16)
-            elif name == "disparity":
-                frame = getDisparityFrame(frame)
+        inPreview = previewQueue.get()
+        inDet = detectionNNQueue.get()
+        depth = depthQueue.get()
 
-            cv2.imshow(name, frame)
-        if cv2.waitKey(1) == ord("q"):
+        counter+=1
+        current_time = time.monotonic()
+        if (current_time - startTime) > 1 :
+            fps = counter / (current_time - startTime)
+            counter = 0
+            startTime = current_time
+
+        frame = inPreview.getCvFrame()
+        depthFrame = depth.getFrame()
+
+        depthFrameColor = cv2.normalize(depthFrame, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
+        depthFrameColor = cv2.equalizeHist(depthFrameColor)
+        depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
+
+        detections = inDet.detections
+        if len(detections) != 0:
+            boundingBoxMapping = xoutBoundingBoxDepthMapping.get()
+            roiDatas = boundingBoxMapping.getConfigData()
+
+            for roiData in roiDatas:
+                roi = roiData.roi
+                roi = roi.denormalize(depthFrameColor.shape[1], depthFrameColor.shape[0])
+                topLeft = roi.topLeft()
+                bottomRight = roi.bottomRight()
+                xmin = int(topLeft.x)
+                ymin = int(topLeft.y)
+                xmax = int(bottomRight.x)
+                ymax = int(bottomRight.y)
+
+                cv2.rectangle(depthFrameColor, (xmin, ymin), (xmax, ymax), 255, cv2.FONT_HERSHEY_SCRIPT_SIMPLEX)
+
+        # If the frame is available, draw bounding boxes on it and show the frame
+        height = frame.shape[0]
+        width  = frame.shape[1]
+        for detection in detections:
+            # Denormalize bounding box
+            x1 = int(detection.xmin * width)
+            x2 = int(detection.xmax * width)
+            y1 = int(detection.ymin * height)
+            y2 = int(detection.ymax * height)
+            try:
+                label = labelMap[detection.label]
+            except:
+                label = detection.label
+            cv2.putText(frame, str(label), (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.putText(frame, "{:.2f}".format(detection.confidence*100), (x1 + 10, y1 + 35), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.putText(frame, f"X: {int(detection.spatialCoordinates.x)} mm", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.putText(frame, f"Y: {int(detection.spatialCoordinates.y)} mm", (x1 + 10, y1 + 65), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.putText(frame, f"Z: {int(detection.spatialCoordinates.z)} mm", (x1 + 10, y1 + 80), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), cv2.FONT_HERSHEY_SIMPLEX)
+
+        cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, (255,255,255))
+        #cv2.imshow("depth", depthFrameColor)
+        cv2.imshow("preview", frame)
+
+        if cv2.waitKey(1) == ord('q'):
             break
