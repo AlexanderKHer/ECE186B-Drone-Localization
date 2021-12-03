@@ -9,6 +9,8 @@ import argparse
 
 
 nnPathDefault = str((Path(__file__).parent / Path('../frozen_inference_graph_openvino_2021.4_5shave.blob')).resolve().absolute())
+#nnPathDefault = str((Path(__file__).parent / Path('../yolo_v4_tiny_openvino_2021.3_6shave.blob')).resolve().absolute())
+#
 parser = argparse.ArgumentParser()
 parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection network blob", default=nnPathDefault)
 parser.add_argument('-s', '--sync', action="store_true", help="Sync RGB output with NN output", default=False)
@@ -38,7 +40,7 @@ camRgb.setPreviewSize(300, 300)
 camRgb.setInterleaved(False)
 camRgb.setFps(40)
 # Define a neural network that will make predictions based on the source frames
-nn.setConfidenceThreshold(0.4)
+nn.setConfidenceThreshold(0.5)
 nn.setBlobPath(args.nnPath)
 nn.setNumInferenceThreads(2)
 nn.input.setBlocking(False)
