@@ -43,16 +43,16 @@ camRgb.setPreviewSize(512, 320)
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-camRgb.setFps(40)
+camRgb.setFps(60)
 
 # Network specific settings
 detectionNetwork.setConfidenceThreshold(0.5)
-detectionNetwork.setNumClasses(80)
+detectionNetwork.setNumClasses(1)
 detectionNetwork.setCoordinateSize(4)
 detectionNetwork.setAnchors(np.array([10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319]))
-detectionNetwork.setAnchorMasks({"side26": np.array([1, 2, 3]), "side13": np.array([3, 4, 5])})
-#detectionNetwork.setAnchorMasks({"side32": np.array([1, 2, 3]), "side16": np.array([3, 4, 5])})
-detectionNetwork.setIouThreshold(0.5)
+#detectionNetwork.setAnchorMasks({"side26": np.array([1, 2, 3]), "side13": np.array([3, 4, 5])})
+detectionNetwork.setAnchorMasks({"side32": np.array([1, 2, 3]), "side16": np.array([3, 4, 5])})
+#detectionNetwork.setIouThreshold(0.8)
 detectionNetwork.setBlobPath(nnPathDefault)
 detectionNetwork.setNumInferenceThreads(2)
 detectionNetwork.input.setBlocking(False)
@@ -89,9 +89,16 @@ with dai.Device(pipeline) as device:
         color = (255, 0, 0)
         for detection in detections:
             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-            #Scv2.putText(frame, labelMap[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            #cv2.putText(frame, labelMap[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             #cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+            #print(bbox[0], bbox[1],bbox[2] ,bbox[3])
+            x = int(((bbox[2]-bbox[0])/2)+bbox[0])
+            y = int(((bbox[3]-bbox[1])/2)+bbox[1])
+            #print(x,y)
+            cv2.putText(frame, f"{x,y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.circle(frame, (x,y), radius=2, color=(255, 0, 0), thickness=-1)
+            #print(detection.label)
         # Show the frame
         cv2.imshow(name, frame)
 
@@ -105,6 +112,7 @@ with dai.Device(pipeline) as device:
 
         if inRgb is not None:
             frame = inRgb.getCvFrame()
+            cv2.circle(frame, (int(frame.shape[1]/2),int(frame.shape[0]/2)), radius=2, color=(0, 0, 0), thickness=-1)
             cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
                         (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
 
