@@ -14,17 +14,14 @@ def simple_sequence():
                 x=0.0, y=0.0, z=0.0,
                 default_velocity=0.1,
                 default_height=0.1) as pc:
-            pc.forward(0.5)
+            pc.back(0.3)
             LH.getLHPos(scf)
-            pc.left(0.2)
+            pc.right(0.3)
             #LH.getLHPos(scf)
-            pc.right(0.4)
-            #LH.getLHPos(scf)
-            pc.back(0.7)
+            pc.forward(0.3)
             #LH.getLHPos(scf)
             pc.go_to(0.0, 0.0, 0.0)
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers(enable_debug_driver=False)
-
     simple_sequence()
