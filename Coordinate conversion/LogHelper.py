@@ -12,6 +12,7 @@ def getLHPos(scf):
     with SyncLogger(scf, lg_stab) as logger:
             for log_entry in logger:
                 #print(log_entry[0],log_entry[1],log_entry[2]) #time stamp, data, object name
-                print(log_entry[1])
-                return log_entry[1]
+                #print(log_entry[1])
+                #return log_entry[1]
                 break
+    return log_entry[1]

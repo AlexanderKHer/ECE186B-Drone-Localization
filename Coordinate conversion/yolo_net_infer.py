@@ -113,6 +113,11 @@ with dai.Device(pipeline) as device:
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             cv2.circle(frame, (int(frame.shape[1]/2),int(frame.shape[0]/2)), radius=2, color=(0, 0, 0), thickness=-1)
+            #dots for camera orientation
+            cv2.circle(frame, (187,84), radius=2, color=(0, 0, 0), thickness=-1)
+            cv2.circle(frame, (320,65), radius=2, color=(0, 0, 0), thickness=-1)
+            cv2.circle(frame, (183,238), radius=2, color=(0, 0, 0), thickness=-1)
+            cv2.circle(frame, (325,232), radius=2, color=(0, 0, 0), thickness=-1)
             cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
                         (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
 
