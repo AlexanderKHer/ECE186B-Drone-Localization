@@ -18,10 +18,12 @@ from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.positioning.motion_commander import MotionCommander
 import LogHelper as LH
-##
+
+## data colletion
+import csv
+save = True
+dataset_save_path = "2NN_dataset.csv"
 ##global
-drone_frame_X = 0
-drone_frame_Y = 0
 
 ## crazyflie setup
 # my vector object
@@ -154,79 +156,79 @@ if __name__ == '__main__':
         cf = Crazyflie(rw_cache='./cache')
         with SyncCrazyflie(URI, cf=cf) as scf:
             with MotionCommander(scf) as motion_commander:
-                # set true for flight
-                cntr_object.keep_flying = True
-                keyboard.hook(key_events_callback)
+                with open(dataset_save_path,'a', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+                    # set true for flight
+                    cntr_object.keep_flying = True
+                    keyboard.hook(key_events_callback)
 
-                # Output queues will be used to get the rgb frames and nn data from the outputs defined above
-                qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-                qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
+                    # Output queues will be used to get the rgb frames and nn data from the outputs defined above
+                    qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+                    qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
 
-                frame = None
-                #drone_frame_X = 0
-                #drone_frame_Y = 0
-                detections = []
-                startTime = time.monotonic()
-                counter = 0
-                color2 = (255, 255, 255)
+                    frame = None
+                    #drone_frame_X = 0
+                    #drone_frame_Y = 0
+                    detections = []
+                    startTime = time.monotonic()
+                    counter = 0
+                    color2 = (255, 255, 255)
 
-                # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
-                def frameNorm(frame, bbox):
-                    normVals = np.full(len(bbox), frame.shape[0])
-                    normVals[::2] = frame.shape[1]
-                    return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
+                    # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
+                    def frameNorm(frame, bbox):
+                        normVals = np.full(len(bbox), frame.shape[0])
+                        normVals[::2] = frame.shape[1]
+                        return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
+            
+                    while cntr_object.keep_flying:
 
-                def displayFrame(name, frame):
-                    color = (255, 0, 0)
-                    global drone_frame_X
-                    global drone_frame_Y
-                    for detection in detections:
-                        bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-                        #cv2.putText(frame, labelMap[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-                        #cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-                        cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
-                        drone_frame_X = int(((bbox[2]-bbox[0])/2)+bbox[0])
-                        drone_frame_Y = int(((bbox[3]-bbox[1])/2)+bbox[1])
+                        motion_commander.start_linear_motion( cntr_object.vector_x, cntr_object.vector_y, cntr_object.vector_z)
+                        drone_data = LH.getLHPos(scf)
+                        # send packets at a specific interval
+                        time.sleep(0.01)
+                        if syncNN:
+                            inRgb = qRgb.get()
+                            inDet = qDet.get()
+                        else:
+                            inRgb = qRgb.tryGet()
+                            inDet = qDet.tryGet()
 
-                        #print(x,y)
-                        cv2.putText(frame, f"{drone_frame_X,drone_frame_Y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-                        cv2.circle(frame, (drone_frame_X,drone_frame_Y), radius=2, color=(255, 0, 0), thickness=-1)
-                    # Show the frame
-                    cv2.imshow(name, frame)
+                        if inRgb is not None:
+                            frame = inRgb.getCvFrame()
+                            cv2.circle(frame, (int(frame.shape[1]/2),int(frame.shape[0]/2)), radius=2, color=(0, 0, 0), thickness=-1)
+                            #dots for camera orientation
+                            cv2.circle(frame, (187,84), radius=2, color=(0, 0, 0), thickness=-1)
+                            cv2.circle(frame, (320,65), radius=2, color=(0, 0, 0), thickness=-1)
+                            cv2.circle(frame, (183,238), radius=2, color=(0, 0, 0), thickness=-1)
+                            cv2.circle(frame, (325,232), radius=2, color=(0, 0, 0), thickness=-1)
+                            cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
+                                        (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
 
-                while cntr_object.keep_flying:
+                        if inDet is not None:
+                            detections = inDet.detections
+                            counter += 1
 
-                    motion_commander.start_linear_motion( cntr_object.vector_x, cntr_object.vector_y, cntr_object.vector_z)
-                    drone_data = LH.getLHPos(scf)
-                    # send packets at a specific interval
-                    time.sleep(0.01)
-                    if syncNN:
-                        inRgb = qRgb.get()
-                        inDet = qDet.get()
-                    else:
-                        inRgb = qRgb.tryGet()
-                        inDet = qDet.tryGet()
+                        if frame is not None:
+                            #displayFrame("rgb", frame)
+                            color = (255, 0, 0)
+                            for detection in detections:
+                                bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
+                                cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+                                drone_frame_X = int(((bbox[2]-bbox[0])/2)+bbox[0])
+                                drone_frame_Y = int(((bbox[3]-bbox[1])/2)+bbox[1])
 
-                    if inRgb is not None:
-                        frame = inRgb.getCvFrame()
-                        cv2.circle(frame, (int(frame.shape[1]/2),int(frame.shape[0]/2)), radius=2, color=(0, 0, 0), thickness=-1)
-                        #dots for camera orientation
-                        cv2.circle(frame, (187,84), radius=2, color=(0, 0, 0), thickness=-1)
-                        cv2.circle(frame, (320,65), radius=2, color=(0, 0, 0), thickness=-1)
-                        cv2.circle(frame, (183,238), radius=2, color=(0, 0, 0), thickness=-1)
-                        cv2.circle(frame, (325,232), radius=2, color=(0, 0, 0), thickness=-1)
-                        cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
-                                    (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
+                                cv2.putText(frame, f"{drone_frame_X,drone_frame_Y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+                                cv2.circle(frame, (drone_frame_X,drone_frame_Y), radius=2, color=(255, 0, 0), thickness=-1)
+                                if(save):
+                                    writer.writerow([drone_frame_X,drone_frame_Y,drone_data[0],drone_data[1],drone_data[2]])
+                                    
+                                print([drone_frame_X,drone_frame_Y,drone_data[0],drone_data[1],drone_data[2]])    
+                            cv2.imshow("rgb", frame)
 
-                    if inDet is not None:
-                        detections = inDet.detections
-                        counter += 1
+                            # write to csv
+                            #print(drone_frame_X,drone_frame_Y,drone_data)
+                            #print([drone_frame_X,drone_frame_Y,drone_data[0],drone_data[1],drone_data[2]])
 
-                    if frame is not None:
-                        displayFrame("rgb", frame)
-                        # write to csv
-                        print(drone_frame_X,drone_frame_Y,drone_data)
-
-                    if cv2.waitKey(1) == ord('q'):
-                        break
+                        if cv2.waitKey(1) == ord('q'):
+                            break
 
