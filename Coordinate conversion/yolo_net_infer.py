@@ -31,8 +31,8 @@ class Net(nn.Module):
         x = self.fc2(x)
         x = self.fc3(x)
         return x
-device = torch.device("cuda")
-model = Net().to(device)
+gpu_device = torch.device("cuda")
+model = Net().to(gpu_device)
 
 # Load the entire model
 model = torch.load(nnCoordinatePathDefault)
@@ -124,8 +124,25 @@ with dai.Device(pipeline) as device:
             #print(bbox[0], bbox[1],bbox[2] ,bbox[3])
             x = int(((bbox[2]-bbox[0])/2)+bbox[0])
             y = int(((bbox[3]-bbox[1])/2)+bbox[1])
-            #print(x,y)
+
+            # Inputting data into model
+            model_input = torch.tensor([x,y]).to(gpu_device).float()
+            model(model_input)
+
+            # transform column tensor to row tensor
+            output = model(model_input.view(1, 2))
+
+            # convert tensor to numpy array
+            output_converted_numpy = output.cpu().detach().numpy()
+
+            # extract x and y values for output and round to the 2nd nearest decimal place
+            output_x = round(output_converted_numpy[0][0], 2)
+            output_y = round(output_converted_numpy[0][1], 2)
+
+
+
             cv2.putText(frame, f"{x,y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.putText(frame, f"{output_x, output_y}", (200, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.circle(frame, (x,y), radius=2, color=(255, 0, 0), thickness=-1)
             #print(detection.label)
         # Show the frame
