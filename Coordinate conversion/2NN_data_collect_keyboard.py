@@ -21,7 +21,7 @@ import LogHelper as LH
 
 ## data colletion
 import csv
-save = True
+save = False
 dataset_save_path = "2NN_dataset.csv"
 ##global
 
@@ -156,6 +156,7 @@ if __name__ == '__main__':
         cf = Crazyflie(rw_cache='./cache')
         with SyncCrazyflie(URI, cf=cf) as scf:
             with MotionCommander(scf) as motion_commander:
+            #with PositionHlCommander(scf, x=0.0, y=0.0, z=0.0, default_velocity=0.1, default_height=0.3) as pc:
                 with open(dataset_save_path,'a', newline='') as csvfile:
                     writer = csv.writer(csvfile)
                     # set true for flight
@@ -186,6 +187,7 @@ if __name__ == '__main__':
                         drone_data = LH.getLHPos(scf)
                         # send packets at a specific interval
                         time.sleep(0.01)
+                        
                         if syncNN:
                             inRgb = qRgb.get()
                             inDet = qDet.get()
@@ -221,7 +223,7 @@ if __name__ == '__main__':
                                 cv2.circle(frame, (drone_frame_X,drone_frame_Y), radius=2, color=(255, 0, 0), thickness=-1)
                                 if(save):
                                     writer.writerow([drone_frame_X,drone_frame_Y,drone_data[0],drone_data[1],drone_data[2]])
-                                    
+
                                 print([drone_frame_X,drone_frame_Y,drone_data[0],drone_data[1],drone_data[2]])    
                             cv2.imshow("rgb", frame)
 

@@ -15,7 +15,6 @@ def getLHPos(scf):
                 #print(log_entry[0],log_entry[1],log_entry[2]) #time stamp, data, object name
                 #print(log_entry[1])
                 break
-    try: log_entry[1]
-    except NameError: log_entry[1] = ["NULL","NULL","NULL"]
-    
+
+    print(type(log_entry[1]))
     return [log_entry[1].get('stateEstimate.x',"NULL"),log_entry[1].get('stateEstimate.y',"NULL"),log_entry[1].get('stateEstimate.z',"NULL")]
