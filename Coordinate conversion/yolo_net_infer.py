@@ -6,10 +6,39 @@ import depthai as dai
 import numpy as np
 import time
 import argparse
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 
 #nnPathDefault = str((Path(__file__).parent / Path('../frozen_inference_graph_openvino_2021.4_5shave.blob')).resolve().absolute())
 nnPathDefault = str((Path(__file__).parent / Path('../yolo_v4_tiny_openvino_2021.3_6shave.blob')).resolve().absolute())
+
+
+
+# Set the path of the second NN
+nnCoordinatePathDefault = '2nd_NN.pt'
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(2, 3)
+        self.fc2 = nn.Linear(3, 3)
+        self.fc3 = nn.Linear(3, 2)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = self.fc3(x)
+        return x
+device = torch.device("cuda")
+model = Net().to(device)
+
+# Load the entire model
+model = torch.load(nnCoordinatePathDefault)
+model.eval()
+
+
 #
 parser = argparse.ArgumentParser()
 parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection network blob", default=nnPathDefault)
@@ -21,7 +50,7 @@ if not Path(nnPathDefault).exists():
     raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py"')
 
 # MobilenetSSD label texts
-labelMap = '../label_map.pbtxt'
+labelMap = ["drone"]
 
 
 syncNN = True
