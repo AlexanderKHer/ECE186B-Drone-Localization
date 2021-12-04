@@ -8,7 +8,9 @@ import time
 import argparse
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
+import SD2_Model as SD
 
 
 #nnPathDefault = str((Path(__file__).parent / Path('../frozen_inference_graph_openvino_2021.4_5shave.blob')).resolve().absolute())
@@ -22,15 +24,16 @@ nnCoordinatePathDefault = '2nd_NN.pt'
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(2, 3)
-        self.fc2 = nn.Linear(3, 3)
-        self.fc3 = nn.Linear(3, 2)
+        self.fc1 = nn.Linear(2, 20)
+        self.fc2 = nn.Linear(20, 20)
+        self.fc3 = nn.Linear(20, 2)
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.fc2(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+      
 gpu_device = torch.device("cuda")
 model = Net().to(gpu_device)
 
@@ -127,19 +130,18 @@ with dai.Device(pipeline) as device:
 
             # Inputting data into model
             model_input = torch.tensor([x,y]).to(gpu_device).float()
-            model(model_input)
+            #print(model_input)
 
             # transform column tensor to row tensor
-            output = model(model_input.view(1, 2))
+            output = model(model_input)
 
             # convert tensor to numpy array
             output_converted_numpy = output.cpu().detach().numpy()
-
+            #print(output_converted_numpy)
+            
             # extract x and y values for output and round to the 2nd nearest decimal place
-            output_x = round(output_converted_numpy[0][0], 2)
-            output_y = round(output_converted_numpy[0][1], 2)
-
-
+            output_x = round(output_converted_numpy[0], 2)
+            output_y = round(output_converted_numpy[1], 2)
 
             cv2.putText(frame, f"{x,y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.putText(frame, f"{output_x, output_y}", (200, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)

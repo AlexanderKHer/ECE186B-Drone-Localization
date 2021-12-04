@@ -25,6 +25,10 @@ def sequence(scf,pc):
             pc.go_to(round(x,1), round(y,1), 0.3)
             LH.getLHPos(scf)
             time.sleep(0.2)
+    pc.go_to(0.0, 0.0, 0.0)
+    keep_flying = False
+    print("drone done. trying to land")
+    pc.land()
 
 def simple_sequence():
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
