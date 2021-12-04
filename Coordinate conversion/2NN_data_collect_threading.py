@@ -37,8 +37,8 @@ keep_flying = False
 def sequence(scf,pc):
     global keep_flying
     pc.go_to(-0.5, 0.5, 0.3)
-    for x in np.arange(-0.5,0.6,0.1):
-        for y in np.arange(0.5,-0.6,-0.1):
+    for x in np.arange(-0.5,0.5,0.1):
+        for y in np.arange(0.5,-0.5,-0.1):
             if(not keep_flying):
                 pc.go_to(0.0, 0.0, 0.0)
                 return
@@ -150,7 +150,7 @@ if __name__ == '__main__':
                     while keep_flying:
                         
                         #motion_commander.start_linear_motion( cntr_object.vector_x, cntr_object.vector_y, cntr_object.vector_z)
-                        drone_data = LH.getLHPos(scf)
+                        #drone_data = LH.getLHPos(scf)
                         # send packets at a specific interval
                         time.sleep(0.01)
                         
@@ -179,6 +179,7 @@ if __name__ == '__main__':
                         if frame is not None:
                             #displayFrame("rgb", frame)
                             color = (255, 0, 0)
+                            drone_data = LH.getLHPos(scf)
                             for detection in detections:
                                 bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
                                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
@@ -186,6 +187,7 @@ if __name__ == '__main__':
                                 drone_frame_Y = int(((bbox[3]-bbox[1])/2)+bbox[1])
 
                                 cv2.putText(frame, f"{drone_frame_X,drone_frame_Y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+                                cv2.putText(frame, f"{round(drone_data[0],2), round(drone_data[1],2)}", (200, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
                                 cv2.circle(frame, (drone_frame_X,drone_frame_Y), radius=2, color=(255, 0, 0), thickness=-1)
                                 if(save):
                                     writer.writerow([drone_frame_X,drone_frame_Y,drone_data[0],drone_data[1],drone_data[2]])
