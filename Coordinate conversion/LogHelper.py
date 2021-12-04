@@ -16,5 +16,5 @@ def getLHPos(scf):
                 #print(log_entry[1])
                 break
 
-    print(type(log_entry[1]))
+    #print(type(log_entry[1]))
     return [log_entry[1].get('stateEstimate.x',"NULL"),log_entry[1].get('stateEstimate.y',"NULL"),log_entry[1].get('stateEstimate.z',"NULL")]

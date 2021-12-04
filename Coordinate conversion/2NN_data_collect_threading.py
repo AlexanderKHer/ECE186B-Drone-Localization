@@ -36,9 +36,9 @@ keep_flying = False
 
 def sequence(scf,pc):
     global keep_flying
-    pc.go_to(-0.3, 0.3, 0.3)
-    for x in np.arange(-0.3,0.4,0.1):
-        for y in np.arange(0.3,-0.4,-0.1):
+    pc.go_to(-0.5, 0.5, 0.3)
+    for x in np.arange(-0.5,0.6,0.1):
+        for y in np.arange(0.5,-0.6,-0.1):
             if(not keep_flying):
                 pc.go_to(0.0, 0.0, 0.0)
                 return
@@ -49,6 +49,7 @@ def sequence(scf,pc):
     pc.go_to(0.0, 0.0, 0.0)
     keep_flying = False
     print("drone done. trying to land")
+    pc.land()
 
 ## depth camera setup
 
@@ -191,7 +192,7 @@ if __name__ == '__main__':
 
                                 print([drone_frame_X,drone_frame_Y,drone_data[0],drone_data[1],drone_data[2]])    
                             cv2.imshow("rgb", frame)
-                            
+
                         if cv2.waitKey(1) == ord('q'):
                             keep_flying = False
                             move_thread.join()
