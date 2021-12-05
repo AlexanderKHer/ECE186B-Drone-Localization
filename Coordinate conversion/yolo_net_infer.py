@@ -19,9 +19,9 @@ nnPathDefault = str((Path(__file__).parent / Path('../yolo_v4_tiny_openvino_2021
 
 
 # Set the path of the second NN
-nnCoordinatePathDefault = '2nd_NN.pt'
+nnCoordinatePathDefault = './best_2nd_NN.pt'
 
-class Net(nn.Module):
+""" class Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.fc1 = nn.Linear(2, 20)
@@ -32,10 +32,10 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
-        return x
+        return x """
       
 gpu_device = torch.device("cuda")
-model = Net().to(gpu_device)
+model = SD.Net().to(gpu_device)
 
 # Load the entire model
 model = torch.load(nnCoordinatePathDefault)
@@ -138,7 +138,7 @@ with dai.Device(pipeline) as device:
             # convert tensor to numpy array
             output_converted_numpy = output.cpu().detach().numpy()
             #print(output_converted_numpy)
-            
+
             # extract x and y values for output and round to the 2nd nearest decimal place
             output_x = round(output_converted_numpy[0], 2)
             output_y = round(output_converted_numpy[1], 2)

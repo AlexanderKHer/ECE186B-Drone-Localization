@@ -34,18 +34,30 @@ logging.basicConfig(level=logging.ERROR)
 # flight variables
 keep_flying = False
 
+#flight sequence
 def sequence(scf,pc):
     global keep_flying
     pc.go_to(-0.5, 0.5, 0.3)
     for x in np.arange(-0.5,0.5,0.1):
-        for y in np.arange(0.5,-0.5,-0.1):
+        for y in np.arange(0.3,-0.6,-0.1):
+            if cv2.waitKey(1) == ord('q'):
+                keep_flying = False
             if(not keep_flying):
                 pc.go_to(0.0, 0.0, 0.0)
                 return
             #print(round(x,1),round(y,1))
             pc.go_to(round(x,1), round(y,1), 0.3)
             #LH.getLHPos(scf)
-            time.sleep(0.2)
+            time.sleep(0.5)
+
+    if(keep_flying):
+        pc.go_to(-0.4, -0.4, 0.3)
+        pc.go_to(-0.4, 0.3, 0.3)
+        pc.go_to(0.4, 0.3, 0.3)
+        pc.go_to(0.4, -0.4, 0.3) 
+        pc.go_to(-0.4, 0.3, 0.3)
+        pc.go_to(0.0, 0.0, 0.3) 
+
     pc.go_to(0.0, 0.0, 0.0)
     keep_flying = False
     print("drone done. trying to land")
