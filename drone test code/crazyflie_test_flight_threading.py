@@ -41,7 +41,7 @@ def simple_sequence():
             print("doing other stuff")
             time.sleep(15)
             print("done! waiting on thread to finish")
-            time.sleep(20)
+            time.sleep(40)
             print("ending things early!")
             keep_flying = False
             move_thread.join()

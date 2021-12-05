@@ -4,7 +4,7 @@
 close all
 
 dataT = readtable('2NN_dataset.csv');
-%dataT = readtable('2NN_dataset_flight.2.csv');
+%dataT = readtable('2NN_dataset_flight.5.csv');
 data = table2array(dataT);
 
 frame_x = data(:,1);

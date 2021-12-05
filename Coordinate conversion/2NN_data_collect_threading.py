@@ -18,6 +18,8 @@ from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 #from cflib.positioning.motion_commander import MotionCommander
 from cflib.positioning.position_hl_commander import PositionHlCommander
+from cflib.crazyflie.log import LogConfig
+from cflib.crazyflie.syncLogger import SyncLogger
 import LogHelper as LH
 import threading
 
@@ -31,13 +33,24 @@ dataset_save_path = "2NN_dataset.csv"
 URI = 'radio://0/80/2M'
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
+
 # flight variables
 keep_flying = False
+drone_data = [0,0,0]
+lg_pos = LogConfig(name='stateEstimate', period_in_ms=10)
+lg_pos.add_variable('stateEstimate.x', 'float')
+lg_pos.add_variable('stateEstimate.y', 'float')
+lg_pos.add_variable('stateEstimate.z', 'float')
+
+def log_pos_callback(timestamp, data, logconf):
+    global drone_data
+    #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
+    drone_data = [data.get('stateEstimate.x',"NULL"),data.get('stateEstimate.y',"NULL"),data.get('stateEstimate.z',"NULL")]
 
 #flight sequence
 def sequence(scf,pc):
     global keep_flying
-    pc.go_to(-0.5, 0.5, 0.3)
+    pc.go_to(-0.5, 0.3, 0.3)
     for x in np.arange(-0.5,0.5,0.1):
         for y in np.arange(0.3,-0.6,-0.1):
             if cv2.waitKey(1) == ord('q'):
@@ -62,6 +75,7 @@ def sequence(scf,pc):
     keep_flying = False
     print("drone done. trying to land")
     pc.land()
+    return
 
 ## depth camera setup
 
@@ -135,6 +149,13 @@ if __name__ == '__main__':
             with PositionHlCommander(scf, x=0.0, y=0.0, z=0.0, default_velocity=0.1, default_height=0.3) as pc:
                 with open(dataset_save_path,'a', newline='') as csvfile:
                     writer = csv.writer(csvfile)
+                    
+                    cf = scf.cf
+                    cf.log.add_config(lg_pos)
+                    lg_pos.data_received_cb.add_callback(log_pos_callback)
+                    lg_pos.start()
+                    time.sleep(3)
+                    #lg_pos.stop()
                     # set true for flight
                     keep_flying = True
                     print("starting move_thread")
@@ -192,7 +213,7 @@ if __name__ == '__main__':
                             #displayFrame("rgb", frame)
                             color = (255, 0, 0)
                             
-                            drone_data = LH.getLHPos(scf)
+                            #drone_data = LH.getLHPos(scf)
                             for detection in detections:
                                 bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
                                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
@@ -210,7 +231,8 @@ if __name__ == '__main__':
 
                         if cv2.waitKey(1) == ord('q'):
                             keep_flying = False
-                            move_thread.join()
+                            lg_pos.stop()
                             break
+    lg_pos.stop()
     keep_flying = False
     move_thread.join()

@@ -7,7 +7,7 @@ lg_stab = LogConfig(name='stateEstimate', period_in_ms=10)
 lg_stab.add_variable('stateEstimate.x', 'float')
 lg_stab.add_variable('stateEstimate.y', 'float')
 lg_stab.add_variable('stateEstimate.z', 'float')
-log_entry = {}
+log_entry = [-1,{'stateEstimate.x':0,'stateEstimate.y':0,'stateEstimate.y':0}, None]
 
 def getLHPos(scf):
     global log_entry
