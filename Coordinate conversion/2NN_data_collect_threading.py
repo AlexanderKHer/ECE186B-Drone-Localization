@@ -180,7 +180,8 @@ if __name__ == '__main__':
                     keep_flying = True
                     # create a child thread for sending move commands to crazyflie 
                     print("starting move_thread")
-                    move_thread = threading.Thread(target=sequence, args=(scf,pc,))
+                    #move_thread = threading.Thread(target=sequence, args=(scf,pc,))
+                    move_thread = threading.Thread(target=eval_sequence, args=(scf,pc,))
                     move_thread.start()
 
                     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
@@ -217,8 +218,8 @@ if __name__ == '__main__':
                             cv2.circle(frame, (320,65), radius=2, color=(0, 0, 0), thickness=-1) #top-right
                             cv2.circle(frame, (183,238), radius=2, color=(0, 0, 0), thickness=-1) #bottom-left
                             cv2.circle(frame, (325,232), radius=2, color=(0, 0, 0), thickness=-1) #bottom-right
-                            cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
-                                        (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2) #FPS counter
+                            #cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
+                                        #(2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2) #FPS counter
 
                         if inDet is not None:
                             detections = inDet.detections
