@@ -30,20 +30,43 @@ def sequence(scf,pc):
     print("drone done. trying to land")
     pc.land()
 
+#eval flight sequence
+def eval_sequence(scf,pc):
+    global keep_flying
+    for r in np.arange(0.4,0.1,-.1):
+        for t in np.arange(0,2*np.pi,0.5):
+            x = r * np.cos(t)
+            y = r * np.sin(t)
+            #print(round(x,2),round(y,2))
+            if(not keep_flying):
+                pc.go_to(0.0, 0.0, 0.0)
+                pc.land()
+                return
+            #print(round(x,1),round(y,1))
+            pc.go_to(round(x,2), round(y,2), 0.3)
+            #time.sleep(0.5)
+
+    pc.go_to(0.0, 0.0, 0.0)
+    keep_flying = False
+    print("Drone done! landing")
+    pc.land()# if main thread crahes for some reason
+    return
+
 def simple_sequence():
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
         with PositionHlCommander(scf, x=0.0, y=0.0, z=0.0, default_velocity=0.1, default_height=0.3) as pc:
             global keep_flying
             keep_flying = True
             print("starting move_thread")
-            move_thread = threading.Thread(target=sequence, args=(scf,pc,))
+            #move_thread = threading.Thread(target=sequence, args=(scf,pc,))
+            move_thread = threading.Thread(target=eval_sequence, args=(scf,pc,))
             move_thread.start()
             print("doing other stuff")
             time.sleep(15)
             print("done! waiting on thread to finish")
-            time.sleep(40)
-            print("ending things early!")
-            keep_flying = False
+            #time.sleep(40)
+            #print("ending things early!")
+            #keep_flying = False
             move_thread.join()
 
             

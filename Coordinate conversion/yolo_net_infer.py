@@ -16,7 +16,7 @@ import SD2_Model as SD
 nnPathDefault = str((Path(__file__).parent / Path('../yolo_v4_tiny_openvino_2021.3_6shave.blob')).resolve().absolute())
 
 # Set the path of the second NN
-nnCoordinatePathDefault = './best_2nd_NN.pt'
+nnCoordinatePathDefault = './2nd_NN_looks_good.pt'
       
 gpu_device = torch.device("cuda")
 model = SD.Net().to(gpu_device)
@@ -30,8 +30,8 @@ plt.ion()
 fig, ax = plt.subplots()
 x, y = [],[]
 sc = ax.scatter(x,y)
-plt.xlim(-1,1)
-plt.ylim(-1,1)
+plt.xlim(-100,100)
+plt.ylim(-100,100)
 plt.xlabel("X axis label")
 plt.ylabel("Y axis label")
 plt.title('drone position')
@@ -139,9 +139,11 @@ with dai.Device(pipeline) as device:
             output_x = round(output_converted_numpy[0], 2)
             output_y = round(output_converted_numpy[1], 2)
             #draw to live graph
-            drawDronepos(output_x,output_y)
+            #drawDronepos(output_x,output_y)
+            sc.set_offsets(np.c_[output_x,output_y])
+            fig.canvas.draw_idle()
             cv2.putText(frame, f"{x,y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            cv2.putText(frame, f"{output_x, output_y}", (200, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.putText(frame, f"Estimated: {output_x, output_y}", (200, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.circle(frame, (x,y), radius=2, color=(255, 0, 0), thickness=-1)
             #print(detection.label)
         # Show the frame
