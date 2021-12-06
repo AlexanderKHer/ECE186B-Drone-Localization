@@ -4,8 +4,8 @@
 close all
 
 %dataT = readtable('2NN_dataset.csv');
-%dataT = readtable('2NN_dataset_flight.5.csv');
-dataT = readtable('2NN_all_dataset.csv');
+dataT = readtable('2NN_dataset_flight.1.csv');
+%dataT = readtable('2NN_all_dataset.csv');
 data = table2array(dataT);
 
 frame_x = data(:,1);
@@ -34,8 +34,24 @@ ylabel('cart-coord-x in cm')
 grid on
 
 %%
-% 
-% scale_X = @(x) ((x-min(frame_x))./512).*max(cart_coord_x);
-% scale_Y = @(x) ((x-min(frame_y))./320).*max(cart_coord_y);
-% figure;
-% plot(scale_X(frame_x),scale_Y(frame_y))
+figure;
+
+plot(frame_x -256,frame_y -160)
+xlim([-256 512/2])
+ylim([-160 320/2])
+xlabel('frame-x') 
+ylabel('frame-y')
+grid on
+
+%%
+figure;
+
+cent_x = 0;
+cent_y = 0;
+r = .4;
+t = 0:0.5:2*pi;
+x = cent_x + r * cos(t);
+y = cent_y + r * sin(t);
+
+plot(round(x,2),round(y,2))
+

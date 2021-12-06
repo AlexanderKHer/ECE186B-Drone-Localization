@@ -168,8 +168,6 @@ if __name__ == '__main__':
                     qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
 
                     frame = None
-                    #drone_frame_X = 0
-                    #drone_frame_Y = 0
                     detections = []
                     startTime = time.monotonic()
                     counter = 0
