@@ -128,7 +128,7 @@ with dai.Device(pipeline) as device:
             model_input = torch.tensor([x - 256,y -160]).to(gpu_device).float()
             #print(model_input)
 
-            # transform column tensor to row tensor
+            # Magic
             output = model(model_input)
 
             # convert tensor to numpy array
