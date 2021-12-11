@@ -32,16 +32,11 @@ x, y = [],[]
 sc = ax.scatter(x,y)
 plt.xlim(-100,100)
 plt.ylim(-100,100)
-plt.xlabel("X axis label")
-plt.ylabel("Y axis label")
+plt.xlabel("X axis cm")
+plt.ylabel("Y axis cm")
 plt.title('drone position')
 plt.grid()
 plt.draw()
-
-def drawDronepos(x,y):
-    sc.set_offsets(np.c_[x,y])
-    fig.canvas.draw_idle()
-    #plt.pause(0.001)
 
 #
 parser = argparse.ArgumentParser()
@@ -117,8 +112,6 @@ with dai.Device(pipeline) as device:
         color = (255, 0, 0)
         for detection in detections:
             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-            #cv2.putText(frame, labelMap[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            #cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
             #print(bbox[0], bbox[1],bbox[2] ,bbox[3])
             x = int(((bbox[2]-bbox[0])/2)+bbox[0])
@@ -126,26 +119,25 @@ with dai.Device(pipeline) as device:
 
             # Inputting data into model
             model_input = torch.tensor([x - 256,y -160]).to(gpu_device).float()
-            #print(model_input)
 
             # Magic
             output = model(model_input)
 
             # convert tensor to numpy array
             output_converted_numpy = output.cpu().detach().numpy()
-            #print(output_converted_numpy)
 
             # extract x and y values for output and round to the 2nd nearest decimal place
             output_x = round(output_converted_numpy[0], 2)
             output_y = round(output_converted_numpy[1], 2)
+
             #draw to live graph
-            #drawDronepos(output_x,output_y)
             sc.set_offsets(np.c_[output_x,output_y])
             fig.canvas.draw_idle()
+
+            #add on screen text and center dot for bounding boxes
             cv2.putText(frame, f"{x,y}", (100, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.putText(frame, f"Estimated: {output_x, output_y}", (200, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.circle(frame, (x,y), radius=2, color=(255, 0, 0), thickness=-1)
-            #print(detection.label)
         # Show the frame
         cv2.imshow(name, frame)
 
